@@ -1,0 +1,22 @@
+{
+  "name": "daily-briefing",
+  "version": "0.1.0",
+  "private": false,
+  "type": "module",
+  "description": "Email a daily briefing assembled from configured intelligence topics.",
+  "scripts": {
+    "briefing": "node src/index.js",
+    "dashboard": "node scripts/dashboard-server.mjs",
+    "example": "node scripts/render-example.mjs",
+    "generate": "node scripts/generate-email.mjs",
+    "preview": "node src/preview.js",
+    "send:now": "node scripts/send-now.mjs",
+    "check": "node --check src/index.js && node --check src/config.js && node --check src/cadence.js && node --check src/xClient.js && node --check src/postFilter.js && node --check src/marketData.js && node --check src/newsContext.js && node --check src/sportsData.js && node --check src/state.js && node --check src/runHistory.js && node --check src/summarizer.js && node --check src/render.js && node --check src/emailer.js && node --check src/preview.js && node --check scripts/render-example.mjs && node --check scripts/generate-email.mjs && node --check scripts/send-now.mjs && node --check scripts/merge-briefing-state.mjs && node --check scripts/dashboard-server.mjs"
+  },
+  "dependencies": {
+    "nodemailer": "^9.0.1"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

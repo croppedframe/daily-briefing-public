@@ -1,0 +1,8 @@
+node_modules/
+.env
+briefing.log
+briefing.err.log
+data/
+examples/
+generated/
+.DS_Store

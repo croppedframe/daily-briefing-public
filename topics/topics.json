@@ -1,0 +1,60 @@
+[
+  {
+    "id": "boston-red-sox",
+    "title": "Boston Red Sox",
+    "label": "SOX",
+    "cadence": "every_run",
+    "kind": "x-search",
+    "trustedQuery": "(from:RedSox OR from:MLB OR from:IanMBrowne OR from:alexspeier OR from:ChrisCotillo OR from:PeteAbe OR from:Sean_McAdam) (\"Red Sox\" OR RedSox OR Boston OR Sox OR Fenway OR roster OR lineup OR injury OR IL OR rehab OR trade OR prospect OR Worcester OR WooSox OR game OR series) -is:retweet -is:reply",
+    "query": "(\"Red Sox\" OR RedSox OR \"Boston Red Sox\" OR Fenway OR WooSox) (injury OR injured OR IL OR lineup OR roster OR trade OR call-up OR optioned OR DFA OR prospect OR starter OR bullpen OR standings OR series) -is:retweet -is:reply",
+    "maxPosts": 20,
+    "searchMaxPosts": 50,
+    "maxSourcePosts": 8,
+    "broadQuerySkipTrustedCount": 5,
+    "broadQueryUseSinceId": true,
+    "broadQueryCadence": "morning",
+    "trustedAccounts": ["RedSox", "MLB", "IanMBrowne", "alexspeier", "ChrisCotillo", "PeteAbe", "Sean_McAdam"],
+    "cautionAccounts": ["RedSoxStats"],
+    "excludeTerms": ["parlay", "same game parlay", "betting picks", "odds boost", "ticket giveaway", "ticket resale", "merch", "promo code", "fantasy baseball", "DFS", "lineup optimizer"],
+    "relevanceTerms": ["Red Sox", "RedSox", "Boston", "Sox", "Fenway", "WooSox", "Worcester", "MLB", "AL East", "lineup", "rotation", "bullpen", "injury", "IL", "rehab", "roster", "trade", "prospect", "call-up", "optioned", "DFA", "series", "standings"],
+    "citedSourcesOnly": true,
+    "materialSourcesOnly": true,
+    "sportsData": {
+      "league": "mlb",
+      "teamId": 111,
+      "teamName": "Boston Red Sox",
+      "divisionId": 201,
+      "lookbackDays": 3,
+      "lookaheadDays": 3,
+      "include": ["recentResults", "nextGame", "standings"]
+    },
+    "wizardPath": "boston-red-sox/wizard.md",
+    "frameworkPath": "boston-red-sox/framework.md"
+  },
+  {
+    "id": "sp500-market",
+    "title": "S&P 500 Market",
+    "label": "SPY",
+    "cadence": "weekday_morning",
+    "kind": "x-search",
+    "maxPosts": 0,
+    "searchMaxPosts": 10,
+    "maxSourcePosts": 4,
+    "trustedAccounts": [],
+    "excludeTerms": ["whatsapp", "trading group", "invite link", "hot stock picks", "price target for today", "signals group", "discord", "telegram", "parlay", "crypto giveaway"],
+    "relevanceTerms": ["S&P 500", "SPY", "SPX", "stocks", "equities", "Fed", "inflation", "CPI", "PCE", "Treasury yields", "earnings"],
+    "citedSourcesOnly": true,
+    "materialSourcesOnly": true,
+    "marketData": {
+      "symbol": "SPY"
+    },
+    "news": {
+      "query": "S&P 500 SPY stock market Federal Reserve inflation earnings yields",
+      "when": "2d",
+      "maxItems": 8,
+      "cautionPublishers": ["Benzinga", "Stocktwits", "InvestorPlace", "The Motley Fool", "TipRanks"]
+    },
+    "wizardPath": "sp500-market/wizard.md",
+    "frameworkPath": "sp500-market/framework.md"
+  }
+]

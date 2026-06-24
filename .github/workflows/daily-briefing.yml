@@ -1,0 +1,76 @@
+name: Daily Briefing
+
+on:
+  workflow_dispatch:
+    inputs:
+      persist_state:
+        description: "Commit briefing state and run history after a successful send"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+
+concurrency:
+  group: daily-briefing-state
+  cancel-in-progress: false
+
+jobs:
+  send-briefing:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    env:
+      X_BEARER_TOKEN: ${{ secrets.X_BEARER_TOKEN }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      OPENAI_MODEL: ${{ secrets.OPENAI_MODEL }}
+      SMTP_HOST: ${{ secrets.SMTP_HOST }}
+      SMTP_PORT: ${{ secrets.SMTP_PORT }}
+      SMTP_SECURE: ${{ secrets.SMTP_SECURE }}
+      SMTP_USER: ${{ secrets.SMTP_USER }}
+      SMTP_PASS: ${{ secrets.SMTP_PASS }}
+      EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+      EMAIL_TO: ${{ secrets.EMAIL_TO }}
+      BRIEFING_LOOKBACK_HOURS: "24"
+      BRIEFING_MAX_POSTS: "25"
+      BRIEFING_STATE_FILE: "data/briefing-state.json"
+      BRIEFING_RUN_HISTORY_FILE: "data/run-history.jsonl"
+      BRIEFING_TIMEZONE: "America/New_York"
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Syntax check
+        run: npm run check
+
+      - name: Send briefing
+        run: npm run briefing
+
+      - name: Persist seen-post state
+        if: ${{ inputs.persist_state == 'true' }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          cp data/briefing-state.json /tmp/local-briefing-state.json
+          cp data/run-history.jsonl /tmp/local-run-history.jsonl
+          git fetch origin main
+          if git show origin/main:data/briefing-state.json > /tmp/remote-briefing-state.json 2>/dev/null; then
+            node scripts/merge-briefing-state.mjs /tmp/remote-briefing-state.json /tmp/local-briefing-state.json data/briefing-state.json
+          fi
+          cp /tmp/local-run-history.jsonl data/run-history.jsonl
+          git add -f data/briefing-state.json
+          git add -f data/run-history.jsonl
+          git diff --cached --quiet || git commit -m "Update briefing state"
+          git push
