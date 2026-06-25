@@ -11,6 +11,23 @@ The public template ships with two example topics:
 - **Boston Red Sox:** team news, roster signal, recent results, next games, and AL East standings.
 - **S&P 500 Market:** SPY price action and broad market catalysts, with little to no X pulling because market X search is noisy.
 
+## Costs And API Access
+
+The template can run without X by setting a topic's `maxPosts` to `0` and relying on market data, sports data, and Google News context.
+
+Topics with `query` or `trustedQuery` use the X API v2 recent-search endpoint and require an X developer bearer token with recent-search access. X is pay-as-you-go for this use case: budget roughly `$0.01` per post returned. Use `maxPosts`, `searchMaxPosts`, trusted-first queries, and `broadQuerySkipTrustedCount` to control spend.
+
+The included S&P 500 topic intentionally avoids X by default because market search can be noisy and may not justify API cost.
+
+Data sources used by the bundled examples:
+
+- X posts: X API v2 recent search. Requires `X_BEARER_TOKEN`.
+- Market data: Yahoo Finance chart endpoints. No API key is used by this template.
+- Sports data: MLB Stats API for the bundled Red Sox example. No API key is used.
+- News context: Google News RSS. No API key is used.
+- Summaries: OpenAI API when `OPENAI_API_KEY` is set.
+- Email delivery: your SMTP provider.
+
 ## What It Does
 
 - Pulls recent X posts using the X API v2 recent-search endpoint when a topic defines X queries.
@@ -22,6 +39,23 @@ The public template ships with two example topics:
 - Sends one SMTP email with both HTML and plain-text versions.
 - Tracks seen X posts in `data/briefing-state.json` so scheduled runs can avoid repeated source posts.
 - Logs run health to `data/run-history.jsonl` for the local dashboard.
+
+## Repo Structure
+
+```text
+.github/workflows/       GitHub Actions manual-dispatch workflow
+scripts/                 Local helpers for examples, generated emails, dashboard, and send-now
+src/                     Collection, filtering, summarization, rendering, email, and state logic
+topics/                  Topic registry, templates, and example topic folders
+data/                    Local state and run history output; created at runtime and ignored by git
+.env.example             Environment variable template
+```
+
+Generated local outputs:
+
+- `data/preview.html` and `data/preview.txt` from `npm run preview`
+- `examples/briefing.*` from `npm run example`
+- `generated/latest.*` and timestamped files from `npm run generate`
 
 ## Setup
 
@@ -37,11 +71,38 @@ Copy the environment template:
 cp .env.example .env
 ```
 
-Fill in `.env`:
+Fill in `.env` using the environment variable reference below. For local previews and examples, most API and SMTP variables can stay blank.
 
-- `X_BEARER_TOKEN`: X developer bearer token with read access. Required for topics that use X queries.
-- `OPENAI_API_KEY`: optional but recommended for generated summaries.
-- `SMTP_*`, `EMAIL_FROM`, `EMAIL_TO`: email sending details.
+## Environment Variables
+
+| Variable | Required | Default | Purpose |
+|---|---:|---|---|
+| `X_BEARER_TOKEN` | For X topics | none | X API bearer token for recent-search collection. |
+| `OPENAI_API_KEY` | No | none | Enables generated summaries and subject lines. |
+| `OPENAI_MODEL` | No | `gpt-4.1-mini` | OpenAI model used for generation. |
+| `SMTP_HOST` | For sending | none | SMTP server hostname. |
+| `SMTP_PORT` | For sending | `587` | SMTP server port. |
+| `SMTP_SECURE` | No | `false` | Use TLS from connection start. |
+| `SMTP_USER` | If provider requires auth | none | SMTP username. |
+| `SMTP_PASS` | If provider requires auth | none | SMTP password or app password. |
+| `EMAIL_FROM` | For sending | none | Sender address. |
+| `EMAIL_TO` | For sending | none | Recipient address. |
+| `BRIEFING_TIMEZONE` | No | `America/New_York` | Timezone for cadence decisions and sports times. |
+| `BRIEFING_MAX_POSTS` | No | `25` | Default max selected posts per topic. |
+| `BRIEFING_LOOKBACK_HOURS` | No | `24` | Default X recent-search lookback window. |
+| `BRIEFING_RUN_ALL_TOPICS` | No | `false` | Forces every topic to run during manual tests. |
+| `BRIEFING_SAVE_STATE` | No | `true`, or `false` for backfills | Controls whether seen-post state is saved. |
+| `BRIEFING_START_TIME` | No | none | UTC start time for a backfill/manual window. |
+| `BRIEFING_END_TIME` | No | now | UTC end time for a backfill/manual window. |
+| `BRIEFING_GENERATED_AT` | No | now | Override timestamp used for rendering/cadence. |
+| `BRIEFING_DISABLE_SINCE_ID` | No | `false` | Ignore saved X since IDs for a run. |
+| `BRIEFING_STATE_FILE` | No | `data/briefing-state.json` | Seen-post state path. |
+| `BRIEFING_RUN_HISTORY_FILE` | No | `data/run-history.jsonl` | Dashboard/run-history path. |
+| `X_COST_PER_POST_RETURNED` | No | none | Optional dashboard cost estimate for X usage. |
+| `OPENAI_INPUT_COST_PER_1M_TOKENS` | No | none | Optional dashboard estimate for OpenAI input cost. |
+| `OPENAI_OUTPUT_COST_PER_1M_TOKENS` | No | none | Optional dashboard estimate for OpenAI output cost. |
+| `TOPICS_FILE` | No | `topics/topics.json` | Topic config file path. |
+| `TOPICS_JSON` | No | none | Inline topic JSON override. |
 
 Run a preview without calling X, OpenAI, market data, sports data, or SMTP:
 
@@ -129,9 +190,29 @@ Topics live in `topics/topics.json`. Each topic should provide:
 - `wizardPath`: user preferences, source standards, and noise boundaries.
 - `frameworkPath`: stable context, scorecards, calendars, and format rules.
 
+Each topic has two instruction files:
+
+- [`topics/TOPIC_WIZARD_TEMPLATE.md`](./topics/TOPIC_WIZARD_TEMPLATE.md): answers personal preference questions such as trusted sources, noise boundaries, and tone.
+- [`topics/TOPIC_TEMPLATE.md`](./topics/TOPIC_TEMPLATE.md): durable context the model should remember, such as the topic's purpose, scorecard, key dates, and formatting rules.
+
+Example wizard answer:
+
+```md
+What should be ignored as noise?
+- Betting promos, fantasy advice, unsourced rumors, and generic engagement bait.
+```
+
+Example framework instruction:
+
+```md
+Lead with what changed since the last briefing, then explain whether it affects the next game, roster outlook, standings, or season trajectory.
+```
+
 The app validates these files before running so a scheduled briefing cannot silently fall back to generic instructions.
 
-New topics are intended to be created with a coding agent. Use a prompt like:
+New topics are intended to be created with a coding agent rather than a built-in wizard UI. The agent copies the templates, fills in topic-specific source rules, creates the topic folder, and updates `topics/topics.json`. This keeps the repo small while still giving each topic a structured setup flow.
+
+Use a prompt like:
 
 ```text
 Add a new briefing topic for [TOPIC NAME]. Use topics/TOPIC_WIZARD_TEMPLATE.md as the starting point for topics/[topic-id]/wizard.md, and use topics/TOPIC_TEMPLATE.md as the starting point for topics/[topic-id]/framework.md. Add sources.md and x-query.md if useful, then update topics/topics.json. Run npm run check when done.
@@ -139,17 +220,17 @@ Add a new briefing topic for [TOPIC NAME]. Use topics/TOPIC_WIZARD_TEMPLATE.md a
 
 The collector supports a trusted-first pattern:
 
-- `trustedQuery`: narrow X query for reliable accounts.
-- `query`: broader X query used as insurance.
-- `broadQuerySkipTrustedCount`: skip the broad query when trusted sources already found enough posts.
-- `broadQueryCadence`: run broad searches less often than trusted searches.
-- `broadQueryUseSinceId`: avoid rescanning the full window for broad searches.
+- `trustedQuery` string: narrow X query for reliable accounts.
+- `query` string: broader X query used as insurance.
+- `broadQuerySkipTrustedCount` number: skip the broad query when trusted sources already found at least this many posts.
+- `broadQueryCadence` cadence string: run broad searches less often than trusted searches; supports the same cadence values listed below.
+- `broadQueryUseSinceId` boolean, default `false`: use saved since IDs for the broad query instead of rescanning the full window.
 
 Topics can also use:
 
 - `marketData.symbol`: fetches latest/intraday and prior completed daily price action.
 - `news.query`: fetches Google News RSS context.
-- `sportsData`: fetches structured sports context. The bundled example uses MLB team ID `111` for the Boston Red Sox.
+- `sportsData`: fetches structured sports context. The bundled implementation currently supports MLB via the public MLB Stats API; the example uses team ID `111` for the Boston Red Sox.
 
 ## Example Topic Shapes
 
