@@ -130,7 +130,7 @@ export function loadConfig() {
     },
     openai: {
       apiKey: process.env.OPENAI_API_KEY,
-      model: process.env.OPENAI_MODEL || "gpt-4.1-mini",
+      model: process.env.OPENAI_MODEL || "gpt-5.4-mini",
     },
     email: {
       host: process.env.SMTP_HOST,
