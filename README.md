@@ -79,7 +79,7 @@ Fill in `.env` using the environment variable reference below. For local preview
 |---|---:|---|---|
 | `X_BEARER_TOKEN` | For X topics | none | X API bearer token for recent-search collection. |
 | `OPENAI_API_KEY` | No | none | Enables generated summaries and subject lines. |
-| `OPENAI_MODEL` | No | `gpt-4.1-mini` | OpenAI model used for generation. |
+| `OPENAI_MODEL` | No | `gpt-5.4-mini` | OpenAI model used for generation. |
 | `SMTP_HOST` | For sending | none | SMTP server hostname. |
 | `SMTP_PORT` | For sending | `587` | SMTP server port. |
 | `SMTP_SECURE` | No | `false` | Use TLS from connection start. |
