@@ -56,5 +56,27 @@
     },
     "wizardPath": "sp500-market/wizard.md",
     "frameworkPath": "sp500-market/framework.md"
+  },
+  {
+    "id": "global-security-monitor",
+    "title": "Global Security Monitor",
+    "label": "GSEC",
+    "cadence": "weekday_morning",
+    "kind": "x-search",
+    "maxPosts": 0,
+    "searchMaxPosts": 10,
+    "maxSourcePosts": 6,
+    "trustedAccounts": [],
+    "excludeTerms": ["graphic", "uncensored", "rumor", "unconfirmed video", "shocking footage", "breaking!!!", "must watch", "do your own research"],
+    "relevanceTerms": ["security", "conflict", "diplomacy", "sanctions", "infrastructure", "humanitarian", "cyber", "shipping", "energy", "official statement", "advisory"],
+    "citedSourcesOnly": true,
+    "materialSourcesOnly": true,
+    "news": {
+      "query": "global security diplomacy sanctions infrastructure humanitarian cyber shipping energy official statement",
+      "when": "2d",
+      "maxItems": 8
+    },
+    "wizardPath": "global-security-monitor/wizard.md",
+    "frameworkPath": "global-security-monitor/framework.md"
   }
 ]
