@@ -8,20 +8,21 @@
 
 ## Trusted Sources
 
-List sources in priority order. Put the most reliable daily starting points first.
+List public sources or source categories in priority order. Put the most reliable daily starting points first.
 
-1. **Primary tracker or official source**
+1. **Official or primary source**
    - Why it matters.
    - How often it updates.
-   - Caveats.
+   - Caveats and blind spots.
 
-2. **Expert or specialist source**
+2. **Specialist reporter, analyst, tracker, or domain expert**
    - Why it matters.
    - Whether it gives breaking news, interpretation, or both.
    - What should be corroborated before use.
 
-3. **General search**
-   - Search targets: filings, regulator releases, company releases, analyst notes, local reporting, official statements.
+3. **General public search**
+   - Search targets: official statements, company releases, filings, local reporting, specialist reporting, market data, sports data, or other public records.
+   - Exclusions: paywalled scraping, private accounts, leaked material, or claims that cannot be sourced to public material.
 
 ---
 
@@ -62,15 +63,16 @@ State the durable question that new information should answer.
 
 | Date | Event |
 |---|---|
-| TBD | Add upcoming hearings, earnings, rulings, votes, launches, or deadlines |
+| TBD | Add upcoming earnings, votes, launches, deadlines, games, reports, briefings, or other public events |
 
 ---
 
 ## Open Threads / Things to Watch
 
 - The most important pending developments.
-- Signals that would change the thesis.
-- Infrastructure, regulatory, market, or distribution risks.
+- Signals that would change the thesis or outlook.
+- Source reliability issues or conflicting accounts to watch.
+- Infrastructure, regulatory, market, distribution, security, or operational risks.
 
 ---
 
