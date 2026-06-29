@@ -1,12 +1,12 @@
 # Global Security Monitor
 
-**Purpose:** Provide a neutral OSINT-style briefing on public global-security developments without using private watchlists, private notes, or personally revealing source rankings.
+**Purpose:** Provide a neutral public-source intelligence brief on global-security developments.
 
 ---
 
 ## Trusted Sources
 
-Use source categories rather than a personal hierarchy of named accounts.
+Use source categories and clear reliability criteria.
 
 1. **Official public sources**
    - Government, military, diplomatic, emergency-management, and intergovernmental public statements.

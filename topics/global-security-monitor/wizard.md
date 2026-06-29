@@ -16,9 +16,9 @@
    - Private accounts, leaked material, graphic content, unverifiable claims, anonymous rumor threads, recycled footage, engagement bait, and posts that encourage harassment or panic.
 
 6. **What keywords, accounts, tickers, sports teams, geographies, organizations, or companies define the topic?**
-   - Use neutral global-security terms, public institutions, regions, infrastructure categories, humanitarian organizations, shipping/energy terms, and official source names. Avoid a private watchlist of named individuals.
+   - Use neutral global-security terms, public institutions, regions, infrastructure categories, humanitarian organizations, shipping/energy terms, and official source names.
 
-7. **What should count as high-priority OSINT signal?**
+7. **What should count as high-priority intelligence signal?**
    - Corroborated public reporting of material security developments, official warnings or policy changes, infrastructure disruptions, humanitarian impacts, cyber incidents with public confirmation, and diplomatic moves that change the outlook.
 
 8. **What should be ignored as noise?**
@@ -27,8 +27,8 @@
 9. **Should the section include links to source posts/articles every time?**
    - Yes. Include source links for material claims and avoid unsupported assertions.
 
-10. **Should the tone be neutral analyst, market-oriented, fan of a team, global-security brief, or executive summary?**
-    - Global-security brief: neutral, careful, concise, and explicit about uncertainty.
+10. **Should the tone be neutral analyst, market-oriented, fan of a team, intelligence brief, or executive summary?**
+    - Intelligence brief: neutral, careful, concise, and explicit about uncertainty.
 
 11. **Which X accounts are reliable enough to prioritize for this topic?**
     - TBD by the user. Prefer official accounts, established reporters, and public-source analysts with transparent methods.

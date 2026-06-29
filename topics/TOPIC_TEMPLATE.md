@@ -2,27 +2,26 @@
 
 # Topic Name
 
-**Purpose:** What this OSINT briefing helps decide, monitor, or understand.
+**Purpose:** What this section helps decide or monitor.
 
 ---
 
 ## Trusted Sources
 
-List public sources or source categories in priority order. Put the most reliable daily starting points first.
+List sources in priority order. Put the most reliable daily starting points first.
 
-1. **Official or primary source**
+1. **Primary tracker or official source**
    - Why it matters.
    - How often it updates.
-   - Caveats and blind spots.
+   - Caveats.
 
-2. **Specialist reporter, analyst, tracker, or domain expert**
+2. **Expert or specialist source**
    - Why it matters.
    - Whether it gives breaking news, interpretation, or both.
    - What should be corroborated before use.
 
-3. **General public search**
-   - Search targets: official statements, company releases, filings, local reporting, specialist reporting, market data, sports data, or other public records.
-   - Exclusions: paywalled scraping, private accounts, leaked material, or claims that cannot be sourced to public material.
+3. **General search**
+   - Search targets: filings, regulator releases, company releases, analyst notes, local reporting, official statements.
 
 ---
 
@@ -63,20 +62,19 @@ State the durable question that new information should answer.
 
 | Date | Event |
 |---|---|
-| TBD | Add upcoming earnings, votes, launches, deadlines, games, reports, briefings, or other public events |
+| TBD | Add upcoming hearings, earnings, rulings, votes, launches, or deadlines |
 
 ---
 
 ## Open Threads / Things to Watch
 
 - The most important pending developments.
-- Signals that would change the thesis or outlook.
-- Source reliability issues or conflicting accounts to watch.
-- Infrastructure, regulatory, market, distribution, security, or operational risks.
+- Signals that would change the thesis.
+- Infrastructure, regulatory, market, or distribution risks.
 
 ---
 
-## Format Notes For Daily Briefings
+## Format Notes for Daily Briefings
 
 - Lead with what changed since the last briefing.
 - Connect new items back to the core framework.

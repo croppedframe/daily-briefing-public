@@ -1,6 +1,6 @@
 # Draft X Queries
 
-These are neutral starter patterns, not a private watchlist. Tune them before enabling live collection.
+These are neutral starter patterns. Tune them before enabling live collection.
 
 ## Trusted Query
 

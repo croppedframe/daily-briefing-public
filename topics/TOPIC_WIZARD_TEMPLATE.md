@@ -20,7 +20,7 @@ Answer these before the topic is allowed to run in the briefing.
 6. **What keywords, accounts, tickers, sports teams, geographies, organizations, or companies define the topic?**
    - TBD
 
-7. **What should count as high-priority OSINT signal?**
+7. **What should count as high priority?**
    - TBD
    - For stock topics, specify whether large prior-day or intraday price moves should change urgency.
    - For sports topics, specify whether injuries, roster changes, standings, or schedule changes should change urgency.
@@ -33,7 +33,7 @@ Answer these before the topic is allowed to run in the briefing.
 9. **Should the section include links to source posts/articles every time?**
    - TBD
 
-10. **Should the tone be neutral analyst, market-oriented, fan of a team, global-security brief, or executive summary?**
+10. **Should the tone be neutral analyst, market-oriented, fan of a team, intelligence brief, or executive summary?**
     - TBD
 
 11. **Which X accounts are reliable enough to prioritize for this topic?**
