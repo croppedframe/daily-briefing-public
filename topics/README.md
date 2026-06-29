@@ -16,6 +16,7 @@ Use `TOPIC_WIZARD_TEMPLATE.md` and `TOPIC_TEMPLATE.md` when adding a new topic o
 
 1. `boston-red-sox`
 2. `sp500-market`
+3. `global-security-monitor`
 
 ## Topic Pattern
 
@@ -25,21 +26,35 @@ The public template now uses harmless example topics:
 
 - `boston-red-sox`: sports/team briefing with trusted X sources and future structured sports-data support.
 - `sp500-market`: broad market briefing centered on SPY price action, Google News context, and minimal/no X pulling because market X search is noisy.
+- `global-security-monitor`: public-source intelligence brief for monitoring global-security developments.
+
+## Source Handling
+
+For topics that depend on fast-moving reporting or public-source material, prefer source rules that explain why a source should be trusted, when it should be treated cautiously, and what kind of corroboration is required before a claim appears in the briefing.
+
+Good topic files should define:
+
+- Signals that matter.
+- Trusted source categories, not just individual accounts.
+- Source caveats and confidence thresholds.
+- Exclusions for engagement bait, recycled claims, graphic content, and unsourced speculation.
+- Language rules for uncertainty, disputed claims, and developing events.
+- A clear instruction not to sensationalize.
 
 ## Wizard
 
 Answer these once per topic in that topic's `wizard.md`. Short answers are fine. The briefing validates these files before it runs so the model has your standing preferences before it tries to interpret daily developments.
 
-1. What decision should this topic help you make?
+1. What decision or situational-awareness need should this topic support?
 2. What is the ideal briefing length: 3 bullets, 1 paragraph, or deeper analysis?
-3. Which sources do you trust most?
-4. Which sources are useful but need caution?
-5. Which sources should be excluded?
-6. What keywords, accounts, tickers, sports teams, geographies, or companies define the topic?
+3. Which public sources or source categories do you trust most?
+4. Which sources are useful but need caution or corroboration?
+5. Which sources, claims, or content types should be excluded?
+6. What keywords, accounts, tickers, sports teams, geographies, organizations, or companies define the topic?
 7. What should count as high priority?
 8. What should be ignored as noise?
 9. Should the section include links to source posts/articles every time?
-10. Should the tone be neutral analyst, market-oriented, fan of a team, or executive summary?
+10. Should the tone be neutral analyst, market-oriented, fan of a team, intelligence brief, or executive summary?
 11. Which X accounts are reliable enough to prioritize for this topic?
 
 ## Draft `TOPICS_JSON`
@@ -73,6 +88,19 @@ Use this only after the queries are tuned. Include `wizardPath` and `frameworkPa
     },
     "wizardPath": "sp500-market/wizard.md",
     "frameworkPath": "sp500-market/framework.md"
+  },
+  {
+    "id": "global-security-monitor",
+    "title": "Global Security Monitor",
+    "kind": "x-search",
+    "maxPosts": 0,
+    "news": {
+      "query": "global security diplomacy sanctions infrastructure humanitarian cyber shipping energy official statement",
+      "when": "2d",
+      "maxItems": 8
+    },
+    "wizardPath": "global-security-monitor/wizard.md",
+    "frameworkPath": "global-security-monitor/framework.md"
   }
 ]
 ```
