@@ -353,10 +353,24 @@ function renderSportsContextHtml(sportsContext) {
   `;
 }
 
+function restorePlaceholders(value, placeholders) {
+  return placeholders.reduce((text, placeholder, index) => text.replaceAll(`@@LINK_${index}@@`, placeholder), value);
+}
+
 function inlineMarkdownToHtml(value) {
-  return escapeHtml(value)
+  const links = [];
+  const text = String(value).replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, (match, label, url) => {
+    const token = `@@LINK_${links.length}@@`;
+    links.push(
+      `<a style="color: #175cd3; text-decoration: none; font-weight: 600;" href="${escapeHtml(url)}">${escapeHtml(label)}</a>`,
+    );
+    return token;
+  });
+
+  const html = escapeHtml(text)
     .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
     .replace(/\*([^*]+)\*/g, "<em>$1</em>");
+  return restorePlaceholders(html, links);
 }
 
 function markdownToHtml(markdown) {
@@ -418,9 +432,18 @@ function markdownToHtml(markdown) {
 function summaryForDisplay(summary) {
   return String(summary)
     .split(/\r?\n/)
-    .map((line) =>
-      line
+    .map((line) => {
+      const links = [];
+      const protectedLine = line.replace(/\[([^\]]+)\]\((https:\/\/x\.com\/i\/web\/status\/\d+)\)/gi, (match) => {
+        const token = `@@LINK_${links.length}@@`;
+        links.push(match);
+        return token;
+      });
+
+      const cleaned = protectedLine
         .replace(/^(\s*(?:[-*]\s*)?(?:\*\*)?)executive readout(?:\*\*)?\s*:\s*/i, "$1")
+        .replace(/\s*\[[^\]]*source[^\]]*\]\(\s*\)[.;,]?/gi, "")
+        .replace(/\s*\[\s*sources?\s*\][.;,]?/gi, "")
         .replace(
           /\s+from\s+(?:sources?|source):\s*(?:\(?https:\/\/x\.com\/i\/web\/status\/\d+\)?[.;,]?\s*)+/gi,
           " ",
@@ -430,12 +453,15 @@ function summaryForDisplay(summary) {
           " ",
         )
         .replace(/(?:\s*\(?https:\/\/x\.com\/i\/web\/status\/\d+\)?[.;,]?\s*)+/g, " ")
+        .replace(/\[\s*\]/g, "")
         .replace(/\s*(?:Sources?|Source):\s*$/i, "")
         .replace(/\s+([.,;:])/g, "$1")
         .replace(/;\s*$/g, "")
         .replace(/\s{2,}/g, " ")
-        .trimEnd(),
-    )
+        .trimEnd();
+
+      return restorePlaceholders(cleaned, links);
+    })
     .filter((line) => !/^[-*;]\s*$/.test(line.trim()))
     .join("\n")
     .trim();

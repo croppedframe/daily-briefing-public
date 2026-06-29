@@ -37,6 +37,27 @@ function mergeQueries(left = {}, right = {}) {
   return merged;
 }
 
+function mergeTopics(left = {}, right = {}) {
+  const merged = { ...left };
+
+  for (const [key, value] of Object.entries(right)) {
+    const existing = merged[key];
+    if (!existing) {
+      merged[key] = value;
+      continue;
+    }
+
+    merged[key] = {
+      ...existing,
+      ...value,
+      lastRunAt: latestTimestamp(existing.lastRunAt, value.lastRunAt),
+      updatedAt: latestTimestamp(existing.updatedAt, value.updatedAt),
+    };
+  }
+
+  return merged;
+}
+
 export function mergeBriefingStates(left, right) {
   const seenPostIds = [...new Set([...(left.seenPostIds || []), ...(right.seenPostIds || [])])]
     .sort((a, b) => {
@@ -50,6 +71,7 @@ export function mergeBriefingStates(left, right) {
     updatedAt: latestTimestamp(left.updatedAt, right.updatedAt),
     seenPostIds,
     queries: mergeQueries(left.queries, right.queries),
+    topics: mergeTopics(left.topics, right.topics),
   };
 }
 
@@ -63,7 +85,7 @@ function main() {
   writeFileSync(outputPath, `${JSON.stringify(merged, null, 2)}\n`);
 
   console.log(
-    `Merged briefing state: ${merged.seenPostIds.length} seen post IDs, ${Object.keys(merged.queries).length} query cursors.`,
+    `Merged briefing state: ${merged.seenPostIds.length} seen post IDs, ${Object.keys(merged.queries).length} query cursors, ${Object.keys(merged.topics).length} topic cursors.`,
   );
 }
 

@@ -7,6 +7,7 @@ const DEFAULT_STATE = {
   updatedAt: null,
   seenPostIds: [],
   queries: {},
+  topics: {},
 };
 
 const MAX_SEEN_POST_IDS = 5000;
@@ -33,6 +34,7 @@ export function loadBriefingState(path) {
       ...state,
       seenPostIds: Array.isArray(state.seenPostIds) ? state.seenPostIds : [],
       queries: state.queries && typeof state.queries === "object" ? state.queries : {},
+      topics: state.topics && typeof state.topics === "object" ? state.topics : {},
     };
   } catch (error) {
     throw new Error(`Unable to read briefing state file "${path}": ${error.message}`);
@@ -45,6 +47,14 @@ export function isSeenPost(state, postId) {
 
 export function sinceIdForQuery(state, query) {
   return state.queries[queryKey(query)]?.sinceId;
+}
+
+export function updatedAtForQuery(state, query) {
+  return state.queries[queryKey(query)]?.updatedAt;
+}
+
+export function lastRunAtForTopic(state, topicId) {
+  return state.topics[topicId]?.lastRunAt;
 }
 
 export function noteFetchedPosts(state, query, posts) {
@@ -66,6 +76,15 @@ export function noteFetchedPosts(state, query, posts) {
       return BigInt(a) > BigInt(b) ? -1 : 1;
     })
     .slice(0, MAX_SEEN_POST_IDS);
+  state.updatedAt = new Date().toISOString();
+}
+
+export function noteTopicRun(state, topicId, ranAt) {
+  state.topics[topicId] = {
+    ...state.topics[topicId],
+    lastRunAt: ranAt instanceof Date ? ranAt.toISOString() : new Date(ranAt).toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
   state.updatedAt = new Date().toISOString();
 }
 

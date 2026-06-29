@@ -87,6 +87,9 @@ Fill in `.env` using the environment variable reference below. For local preview
 | `SMTP_PASS` | If provider requires auth | none | SMTP password or app password. |
 | `EMAIL_FROM` | For sending | none | Sender address. |
 | `EMAIL_TO` | For sending | none | Recipient address. |
+| `BRIEFING_SHARED_ROUTES` | No | none | Semicolon-separated filtered-recipient routes, using `email:TOPIC,TOPIC`. |
+| `BRIEFING_SHARED_EMAIL_TO` | No | none | Legacy comma-separated recipients for one shared topic set. |
+| `BRIEFING_SHARED_TOPIC_IDS` | No | none | Topic IDs/labels/titles for `BRIEFING_SHARED_EMAIL_TO`. |
 | `BRIEFING_TIMEZONE` | No | `America/New_York` | Timezone for cadence decisions and sports times. |
 | `BRIEFING_MAX_POSTS` | No | `25` | Default max selected posts per topic. |
 | `BRIEFING_LOOKBACK_HOURS` | No | `24` | Default X recent-search lookback window. |
@@ -154,6 +157,14 @@ npm run send:now
 ```
 
 This uses live collection/generation plus SMTP delivery, forces all configured topics to run, and sets `BRIEFING_SAVE_STATE=false` so the test send does not update seen-post memory.
+
+To send filtered copies to additional recipients without rerunning collection or summarization, set `BRIEFING_SHARED_ROUTES`:
+
+```sh
+BRIEFING_SHARED_ROUTES="friend1@example.com:SOX;friend2@example.com:SPY,global-security-monitor"
+```
+
+Each route uses `email:TOPIC,TOPIC`, separated by semicolons. Topic references can be topic IDs, labels, or titles. The app renders each shared email from the already-collected sections.
 
 At minimum, `.env` needs:
 
@@ -224,7 +235,7 @@ The collector supports a trusted-first pattern:
 - `query` string: broader X query used as insurance.
 - `broadQuerySkipTrustedCount` number: skip the broad query when trusted sources already found at least this many posts.
 - `broadQueryCadence` cadence string: run broad searches less often than trusted searches; supports the same cadence values listed below.
-- `broadQueryUseSinceId` boolean, default `false`: use saved since IDs for the broad query instead of rescanning the full window.
+- `broadQueryUseSinceId` boolean, default `false`: use saved since IDs for the broad query instead of rescanning the full topic window.
 
 Topics can also use:
 
@@ -294,6 +305,10 @@ Supported topic cadences:
 
 Set `BRIEFING_RUN_ALL_TOPICS=true` to force every topic during a manual test.
 
+Use `cadence` and `lookbackHours` in `topics/topics.json` to set topic intervals. The external scheduler only decides when the app wakes up; the topic config decides which sections run. After a topic has run successfully once, its next normal run searches back to the previous successful run for that topic. `lookbackHours` is the first-run/fallback window when no topic run cursor exists, or when you intentionally override the window.
+
+This keeps first runs and manual recovery runs bounded while letting weekday-only topics catch up after skipped days. For example, a `weekday_afternoon` topic that last ran Friday will search from the successful Friday run when it next runs Monday, so weekend posts are still eligible.
+
 ## Backfill Runs
 
 For a one-off continuity email after missed runs, use exact UTC timestamps:
@@ -330,7 +345,7 @@ Configure these repository secrets before running in GitHub Actions:
 - `EMAIL_TO`
 
 
-Set day-to-day briefing intervals in `topics/topics.json`, not GitHub secrets. The scheduler wakes the app up; `cadence` decides whether each topic runs on that wakeup, and `lookbackHours` decides how much source history that topic collects.
+Set day-to-day briefing intervals in `topics/topics.json`, not GitHub secrets. The scheduler wakes the app up; `cadence` decides whether each topic runs on that wakeup, and the saved topic cursor decides how much source history that topic collects after its first successful run. `lookbackHours` remains the first-run/fallback window.
 
 Native GitHub scheduled runs are intentionally disabled because they can be delayed or occasionally dropped during high load.
 
