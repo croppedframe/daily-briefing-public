@@ -63,6 +63,55 @@ function parseNumber(value) {
   return Number.isFinite(parsed) ? parsed : undefined;
 }
 
+function parseCsv(value, fallback = []) {
+  if (value === undefined || value === "") return fallback;
+  return String(value)
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function parseSharedRoutes(value) {
+  if (value === undefined || value === "") return [];
+
+  return String(value)
+    .split(";")
+    .map((route) => route.trim())
+    .filter(Boolean)
+    .map((route) => {
+      const separator = route.indexOf(":");
+      if (separator === -1) {
+        throw new Error("BRIEFING_SHARED_ROUTES entries must use email:TOPIC,TOPIC format.");
+      }
+
+      const to = route.slice(0, separator).trim();
+      const topicRefs = parseCsv(route.slice(separator + 1));
+      if (!to || topicRefs.length === 0) {
+        throw new Error("BRIEFING_SHARED_ROUTES entries require both an email address and at least one topic.");
+      }
+
+      return { to, topicRefs };
+    });
+}
+
+function topicKey(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function resolveSharedRouteTopicIds(routes, topics) {
+  const topicLookup = new Map();
+  for (const topic of topics) {
+    topicLookup.set(topicKey(topic.id), topic.id);
+    topicLookup.set(topicKey(topic.label), topic.id);
+    topicLookup.set(topicKey(topic.title), topic.id);
+  }
+
+  return routes.map((route) => ({
+    to: route.to,
+    topicIds: route.topicRefs.map((topicRef) => topicLookup.get(topicKey(topicRef)) || topicRef),
+  }));
+}
+
 function isValidDateTime(value) {
   return !value || !Number.isNaN(new Date(value).getTime());
 }
@@ -123,6 +172,22 @@ export function loadConfig() {
   const startTime = process.env.BRIEFING_START_TIME;
 
   const topicsPath = process.env.TOPICS_FILE || "topics/topics.json";
+  const topics = loadTopicDefinitions().map((topic) => ({
+    maxPosts,
+    ...topic,
+    framework: loadTopicText(topic, "frameworkPath", "framework", topicsPath),
+    wizard: loadTopicText(topic, "wizardPath", "wizard answers", topicsPath),
+  }));
+  const legacySharedTopicIds = parseCsv(process.env.BRIEFING_SHARED_TOPIC_IDS, []);
+  const sharedRoutes = resolveSharedRouteTopicIds(
+    [
+      ...parseSharedRoutes(process.env.BRIEFING_SHARED_ROUTES),
+      ...(process.env.BRIEFING_SHARED_EMAIL_TO
+        ? [{ to: process.env.BRIEFING_SHARED_EMAIL_TO, topicRefs: legacySharedTopicIds }]
+        : []),
+    ],
+    topics,
+  );
 
   return {
     x: {
@@ -160,12 +225,8 @@ export function loadConfig() {
         openAiInputCostPer1M: parseNumber(process.env.OPENAI_INPUT_COST_PER_1M_TOKENS),
         openAiOutputCostPer1M: parseNumber(process.env.OPENAI_OUTPUT_COST_PER_1M_TOKENS),
       },
-      topics: loadTopicDefinitions().map((topic) => ({
-        maxPosts,
-        ...topic,
-        framework: loadTopicText(topic, "frameworkPath", "framework", topicsPath),
-        wizard: loadTopicText(topic, "wizardPath", "wizard answers", topicsPath),
-      })),
+      sharedRoutes,
+      topics,
     },
   };
 }
@@ -235,4 +296,13 @@ export function validateConfig(config) {
         .join(", ")}`,
     );
   }
+
+  const topicIds = new Set(config.briefing.topics.map((topic) => topic.id));
+  const unknownSharedTopicIds = config.briefing.sharedRoutes.flatMap((route) =>
+    route.topicIds.filter((topicId) => !topicIds.has(topicId)),
+  );
+  if (unknownSharedTopicIds.length > 0) {
+    throw new Error(`Unknown shared briefing topic values: ${[...new Set(unknownSharedTopicIds)].join(", ")}`);
+  }
 }
+

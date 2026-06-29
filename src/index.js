@@ -7,7 +7,16 @@ import { selectSignalPosts, sourcePostsForSection } from "./postFilter.js";
 import { fetchMarketContext } from "./marketData.js";
 import { fetchNewsContext } from "./newsContext.js";
 import { fetchSportsContext } from "./sportsData.js";
-import { isSeenPost, loadBriefingState, noteFetchedPosts, saveBriefingState, sinceIdForQuery } from "./state.js";
+import {
+  isSeenPost,
+  lastRunAtForTopic,
+  loadBriefingState,
+  noteFetchedPosts,
+  noteTopicRun,
+  saveBriefingState,
+  sinceIdForQuery,
+  updatedAtForQuery,
+} from "./state.js";
 import { topicIsDue, topicsForRun } from "./cadence.js";
 import { aggregateOpenAiUsage, appendRunHistory, estimateCosts } from "./runHistory.js";
 
@@ -91,9 +100,38 @@ function runHealthTotals(runHealth) {
   );
 }
 
+function filterRunHealth(runHealth, topicIds) {
+  if (!runHealth?.totals) return undefined;
+
+  const allowed = new Set(topicIds);
+  const topics = runHealth.topics.filter((topic) => allowed.has(topic.id));
+  return {
+    ...runHealth,
+    topics,
+    totals: runHealthTotals({ topics }),
+  };
+}
+
 function broadQueryIsDue(config, topic, generatedAt) {
   if (!topic.broadQueryCadence) return true;
   return topicIsDue({ id: topic.id, cadence: topic.broadQueryCadence }, generatedAt, config.briefing.timezone);
+}
+
+function topicStartTime(config, topic, state, generatedAt) {
+  if (config.briefing.startTime) return config.briefing.startTime;
+
+  const lastRunAt =
+    lastRunAtForTopic(state, topic.id) ||
+    [topic.trustedQuery, topic.query]
+      .map((query) => (query ? updatedAtForQuery(state, query) : undefined))
+      .filter(Boolean)
+      .sort()
+      .at(-1);
+  if (!lastRunAt) return undefined;
+
+  const start = new Date(lastRunAt);
+  if (Number.isNaN(start.getTime()) || start >= generatedAt) return undefined;
+  return start.toISOString();
 }
 
 async function collectTopic(config, topic, state, generatedAt, openAiUsageCalls) {
@@ -107,6 +145,7 @@ async function collectTopic(config, topic, state, generatedAt, openAiUsageCalls)
   ].filter(Boolean);
   const rawPosts = [];
   const collectionWarnings = [];
+  const startTime = topicStartTime(config, topic, state, generatedAt);
   const health = {
     id: topic.id,
     title: topic.title,
@@ -146,7 +185,7 @@ async function collectTopic(config, topic, state, generatedAt, openAiUsageCalls)
         maxPages: topic.maxPages,
         lookbackHours: topic.lookbackHours || config.briefing.lookbackHours,
         sinceId: useSinceId && !config.briefing.disableSinceId ? sinceIdForQuery(state, query) : undefined,
-        startTime: config.briefing.startTime,
+        startTime,
         endTime: config.briefing.endTime,
       });
       const fetchedPosts = result.posts;
@@ -218,6 +257,40 @@ async function sendCreditsDepletedNotification(config, error) {
 
   const result = await sendEmail(config.email, message);
   console.log(`Credits depleted notification sent to ${config.email.to}: ${result.messageId || "ok"}`);
+}
+
+async function sendSharedBriefing(config, { generatedAt, runHealth, coverageWindow, sections }) {
+  if (config.briefing.sharedRoutes.length === 0) return;
+
+  for (const route of config.briefing.sharedRoutes) {
+    const sharedTopicIds = new Set(route.topicIds);
+    const sharedSections = sections.filter((section) => sharedTopicIds.has(section.id));
+    if (sharedSections.length === 0) {
+      console.warn(`Shared briefing skipped for ${route.to}: no sections matched ${route.topicIds.join(", ")}.`);
+      continue;
+    }
+
+    const message = renderBriefing({
+      generatedAt,
+      timezone: config.briefing.timezone,
+      runHealth: filterRunHealth(runHealth, route.topicIds),
+      coverageWindow,
+      sections: sharedSections,
+    });
+
+    try {
+      const result = await sendEmail(
+        {
+          ...config.email,
+          to: route.to,
+        },
+        message,
+      );
+      console.log(`Shared briefing sent to ${route.to}: ${result.messageId || "ok"}`);
+    } catch (error) {
+      console.warn(`Shared briefing send failed for ${route.to}: ${error.message}`);
+    }
+  }
 }
 
 async function main() {
@@ -293,11 +366,26 @@ async function main() {
     console.warn(`Briefing sent, but run history was not recorded: ${error.message}`);
   }
   if (config.briefing.saveState) {
+    for (const section of sections) {
+      if (section.health.queriesFailed === 0) {
+        noteTopicRun(state, section.id, generatedAt);
+      }
+    }
     saveBriefingState(config.briefing.stateFile, state);
     console.log(`Briefing sent to ${config.email.to}: ${result.messageId || "ok"}`);
   } else {
     console.log(`Briefing sent to ${config.email.to}: ${result.messageId || "ok"}; state save skipped.`);
   }
+
+  await sendSharedBriefing(config, {
+    generatedAt,
+    runHealth,
+    coverageWindow: {
+      startTime: config.briefing.startTime,
+      endTime: config.briefing.endTime,
+    },
+    sections,
+  });
 }
 
 main().catch(async (error) => {

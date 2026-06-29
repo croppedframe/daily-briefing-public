@@ -33,6 +33,7 @@ jobs:
       SMTP_PASS: ${{ secrets.SMTP_PASS }}
       EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
       EMAIL_TO: ${{ secrets.EMAIL_TO }}
+      BRIEFING_SHARED_ROUTES: ${{ secrets.BRIEFING_SHARED_ROUTES }}
       BRIEFING_LOOKBACK_HOURS: "24"
       BRIEFING_MAX_POSTS: "25"
       BRIEFING_STATE_FILE: "data/briefing-state.json"

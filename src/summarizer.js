@@ -87,8 +87,8 @@ export async function summarizeTopic({
       : "Prioritize: major reported incidents, locations, actors, changes from routine, and what deserves monitoring next.",
     "Summarize only the new supplied posts. Connect updates back to the standing framework when useful.",
     "If the supplied posts are weak, noisy, promotional, or merely commentary, say that clearly and do not manufacture a development.",
-    "When you use a supplied X post as evidence, include the post URL only as a source reference, not as part of the prose. The renderer shows source posts separately and hides raw X status URLs from the briefing body.",
-    "Every material factual item in Notable items should be backed by at least one supplied post URL. Do not make an item prominent if you cannot cite a supplied source for it.",
+    "When you use a supplied X post as evidence, cite it as an inline markdown link like [source](SUPPLIED_POST_URL) at the end of the relevant sentence or bullet. Do not use bare [source] placeholders, footnotes, or generic source labels without links. The renderer also shows source posts separately.",
+    "Every material factual item in Notable items should be backed by at least one linked supplied post URL. Do not make an item prominent if you cannot cite a supplied source for it.",
     "Use the user briefing preferences below to decide depth, tone, source strictness, and what counts as high priority.",
     marketContext
       ? "This topic includes market context. Incorporate the latest/intraday and prior completed daily price action into the delivered analysis as a distinct Price action item. Explain whether the move appears to have a sourced catalyst or should be treated only as context."
