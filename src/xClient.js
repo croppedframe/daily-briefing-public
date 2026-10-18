@@ -48,6 +48,27 @@ function isRetryableError(error) {
   return error.status === undefined || isRetryableStatus(error.status);
 }
 
+function isInvalidSinceIdError(error) {
+  if (!(error instanceof XApiRequestError) || error.status !== 400) return false;
+  const payload = parseXErrorBody(error.body);
+  return (payload?.errors || []).some((item) => item.parameters?.since_id);
+}
+
+function minimumRecentStartTime(error) {
+  if (!(error instanceof XApiRequestError) || error.status !== 400) return undefined;
+  const payload = parseXErrorBody(error.body);
+  const startTimeError = (payload?.errors || []).find((item) => item.parameters?.start_time);
+  const match = startTimeError?.message?.match(/start_time.*on or after\s+([^\s"']+)/i);
+  if (!match) return undefined;
+
+  const minimum = new Date(match[1]);
+  if (Number.isNaN(minimum.getTime())) return undefined;
+
+  // X reports the lower bound at minute precision while its rolling window
+  // continues advancing. Move one minute inside the window before retrying.
+  return new Date(minimum.getTime() + 60_000).toISOString();
+}
+
 function sleep(ms) {
   return new Promise((resolve) => {
     setTimeout(resolve, ms);
@@ -164,6 +185,10 @@ export async function fetchRecentXPosts({
   const posts = [];
   let nextToken;
   let pagesFetched = 0;
+  let activeSinceId = sinceId;
+  let activeStartTime = startTime;
+  let retriedWithoutSinceId = false;
+  let adjustedStartTime = false;
 
   for (let page = 0; page < pages; page += 1) {
     for (let attempt = 0; attempt <= retries; attempt += 1) {
@@ -173,8 +198,8 @@ export async function fetchRecentXPosts({
           query,
           maxResults,
           lookbackHours,
-          sinceId,
-          startTime,
+          sinceId: activeSinceId,
+          startTime: activeStartTime,
           endTime,
           nextToken,
         });
@@ -184,6 +209,25 @@ export async function fetchRecentXPosts({
         break;
       } catch (error) {
         if (error instanceof XCreditsDepletedError) throw error;
+
+        if (activeSinceId && !nextToken && !retriedWithoutSinceId && isInvalidSinceIdError(error)) {
+          console.warn(`X rejected stale since_id for query "${query}"; retrying with lookback window.`);
+          activeSinceId = undefined;
+          retriedWithoutSinceId = true;
+          attempt -= 1;
+          continue;
+        }
+
+        const minimumStartTime = !nextToken && !adjustedStartTime
+          ? minimumRecentStartTime(error)
+          : undefined;
+        if (!activeSinceId && minimumStartTime) {
+          console.warn(`X rejected stale start_time for query "${query}"; retrying from ${minimumStartTime}.`);
+          activeStartTime = minimumStartTime;
+          adjustedStartTime = true;
+          attempt -= 1;
+          continue;
+        }
 
         const canRetry = isRetryableError(error) && attempt < retries;
         if (!canRetry) throw error;
