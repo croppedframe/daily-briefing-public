@@ -1,6 +1,18 @@
-function truncate(text, maxLength) {
-  if (text.length <= maxLength) return text;
-  return `${text.slice(0, maxLength - 3)}...`;
+export function truncate(text, maxLength) {
+  const safeText = text.toWellFormed();
+  if (safeText.length <= maxLength) return safeText;
+
+  let end = maxLength - 3;
+  const lastCodeUnit = safeText.charCodeAt(end - 1);
+  const nextCodeUnit = safeText.charCodeAt(end);
+  if (
+    lastCodeUnit >= 0xD800 && lastCodeUnit <= 0xDBFF
+    && nextCodeUnit >= 0xDC00 && nextCodeUnit <= 0xDFFF
+  ) {
+    end -= 1;
+  }
+
+  return `${safeText.slice(0, end)}...`;
 }
 
 function sourceDigest(posts) {
