@@ -47,20 +47,31 @@ function loadLocalEnv(path = ".env") {
   }
 }
 
-function parseBoolean(value, fallback = false) {
+export function parseBoolean(value, fallback = false, name = "value") {
   if (value === undefined || value === "") return fallback;
-  return ["1", "true", "yes", "on"].includes(String(value).toLowerCase());
+  const normalized = String(value).toLowerCase();
+  if (["1", "true", "yes", "on"].includes(normalized)) return true;
+  if (["0", "false", "no", "off"].includes(normalized)) return false;
+  throw new Error(`${name} must be a boolean (true/false, yes/no, on/off, or 1/0); received "${value}".`);
 }
 
-function parseInteger(value, fallback) {
-  const parsed = Number.parseInt(value, 10);
-  return Number.isFinite(parsed) ? parsed : fallback;
+export function parseInteger(value, fallback, name = "value", { min, max } = {}) {
+  if (value === undefined || value === "") return fallback;
+  if (!/^-?\d+$/.test(String(value))) throw new Error(`${name} must be an integer; received "${value}".`);
+  const parsed = Number(value);
+  if (!Number.isSafeInteger(parsed)) throw new Error(`${name} must be a safe integer; received "${value}".`);
+  if (min !== undefined && parsed < min) throw new Error(`${name} must be at least ${min}; received ${parsed}.`);
+  if (max !== undefined && parsed > max) throw new Error(`${name} must be at most ${max}; received ${parsed}.`);
+  return parsed;
 }
 
-function parseNumber(value) {
+export function parseNumber(value, name = "value", { min, max } = {}) {
   if (value === undefined || value === "") return undefined;
   const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : undefined;
+  if (!Number.isFinite(parsed)) throw new Error(`${name} must be a finite number; received "${value}".`);
+  if (min !== undefined && parsed < min) throw new Error(`${name} must be at least ${min}; received ${parsed}.`);
+  if (max !== undefined && parsed > max) throw new Error(`${name} must be at most ${max}; received ${parsed}.`);
+  return parsed;
 }
 
 function parseCsv(value, fallback = []) {
@@ -74,7 +85,7 @@ function parseCsv(value, fallback = []) {
 function parseSharedRoutes(value) {
   if (value === undefined || value === "") return [];
 
-  return String(value)
+  const routes = String(value)
     .split(";")
     .map((route) => route.trim())
     .filter(Boolean)
@@ -92,6 +103,8 @@ function parseSharedRoutes(value) {
 
       return { to, topicRefs };
     });
+
+  return routes;
 }
 
 function topicKey(value) {
@@ -118,7 +131,7 @@ function isValidDateTime(value) {
 
 function resolveSaveState({ explicitValue, startTime }) {
   if (explicitValue !== undefined && explicitValue !== "") {
-    return parseBoolean(explicitValue, true);
+    return parseBoolean(explicitValue, true, "BRIEFING_SAVE_STATE");
   }
 
   return !startTime;
@@ -167,8 +180,8 @@ function loadTopicText(topic, pathKey, label, topicsPath = "topics/topics.json")
 
 export function loadConfig() {
   loadLocalEnv();
-  const lookbackHours = parseInteger(process.env.BRIEFING_LOOKBACK_HOURS, 24);
-  const maxPosts = parseInteger(process.env.BRIEFING_MAX_POSTS, 25);
+  const lookbackHours = parseInteger(process.env.BRIEFING_LOOKBACK_HOURS, 24, "BRIEFING_LOOKBACK_HOURS", { min: 1 });
+  const maxPosts = parseInteger(process.env.BRIEFING_MAX_POSTS, 25, "BRIEFING_MAX_POSTS", { min: 1 });
   const startTime = process.env.BRIEFING_START_TIME;
 
   const topicsPath = process.env.TOPICS_FILE || "topics/topics.json";
@@ -199,8 +212,8 @@ export function loadConfig() {
     },
     email: {
       host: process.env.SMTP_HOST,
-      port: parseInteger(process.env.SMTP_PORT, 587),
-      secure: parseBoolean(process.env.SMTP_SECURE, false),
+      port: parseInteger(process.env.SMTP_PORT, 587, "SMTP_PORT", { min: 1, max: 65535 }),
+      secure: parseBoolean(process.env.SMTP_SECURE, false, "SMTP_SECURE"),
       user: process.env.SMTP_USER,
       pass: process.env.SMTP_PASS,
       from: process.env.EMAIL_FROM,
@@ -210,20 +223,33 @@ export function loadConfig() {
       generatedAt: process.env.BRIEFING_GENERATED_AT,
       startTime,
       endTime: process.env.BRIEFING_END_TIME,
-      disableSinceId: parseBoolean(process.env.BRIEFING_DISABLE_SINCE_ID, false),
+      disableSinceId: parseBoolean(process.env.BRIEFING_DISABLE_SINCE_ID, false, "BRIEFING_DISABLE_SINCE_ID"),
       lookbackHours,
       maxPosts,
-      runAllTopics: parseBoolean(process.env.BRIEFING_RUN_ALL_TOPICS, false),
+      runAllTopics: parseBoolean(process.env.BRIEFING_RUN_ALL_TOPICS, false, "BRIEFING_RUN_ALL_TOPICS"),
       saveState: resolveSaveState({ explicitValue: process.env.BRIEFING_SAVE_STATE, startTime }),
       stateFile: process.env.BRIEFING_STATE_FILE || "data/briefing-state.json",
       runHistoryFile: process.env.BRIEFING_RUN_HISTORY_FILE || "data/run-history.jsonl",
       schedulerPatExpiresOn: process.env.SCHEDULER_PAT_EXPIRES_ON,
-      schedulerPatReminderDays: parseInteger(process.env.SCHEDULER_PAT_REMINDER_DAYS, 21),
+      schedulerPatReminderDays: parseInteger(
+        process.env.SCHEDULER_PAT_REMINDER_DAYS,
+        21,
+        "SCHEDULER_PAT_REMINDER_DAYS",
+        { min: 0 },
+      ),
       timezone: process.env.BRIEFING_TIMEZONE || "America/New_York",
       costs: {
-        xCostPerPost: parseNumber(process.env.X_COST_PER_POST_RETURNED),
-        openAiInputCostPer1M: parseNumber(process.env.OPENAI_INPUT_COST_PER_1M_TOKENS),
-        openAiOutputCostPer1M: parseNumber(process.env.OPENAI_OUTPUT_COST_PER_1M_TOKENS),
+        xCostPerPost: parseNumber(process.env.X_COST_PER_POST_RETURNED, "X_COST_PER_POST_RETURNED", { min: 0 }),
+        openAiInputCostPer1M: parseNumber(
+          process.env.OPENAI_INPUT_COST_PER_1M_TOKENS,
+          "OPENAI_INPUT_COST_PER_1M_TOKENS",
+          { min: 0 },
+        ),
+        openAiOutputCostPer1M: parseNumber(
+          process.env.OPENAI_OUTPUT_COST_PER_1M_TOKENS,
+          "OPENAI_OUTPUT_COST_PER_1M_TOKENS",
+          { min: 0 },
+        ),
       },
       sharedRoutes,
       topics,
@@ -231,78 +257,198 @@ export function loadConfig() {
   };
 }
 
-export function validateConfig(config) {
-  const missing = [];
+function nonEmptyString(value) {
+  return typeof value === "string" && value.trim().length > 0;
+}
 
-  if (!config.x.bearerToken) missing.push("X_BEARER_TOKEN");
-  if (!config.email.host) missing.push("SMTP_HOST");
-  if (!config.email.from) missing.push("EMAIL_FROM");
-  if (!config.email.to) missing.push("EMAIL_TO");
-
-  if (missing.length > 0) {
-    throw new Error(`Missing required environment variables: ${missing.join(", ")}`);
-  }
-
-  const dateFields = [
-    ["BRIEFING_GENERATED_AT", config.briefing.generatedAt],
-    ["BRIEFING_START_TIME", config.briefing.startTime],
-    ["BRIEFING_END_TIME", config.briefing.endTime],
-  ];
-  const invalidDateFields = dateFields.filter(([, value]) => !isValidDateTime(value));
-  if (invalidDateFields.length > 0) {
-    throw new Error(`Invalid briefing date/time environment variables: ${invalidDateFields.map(([name]) => name).join(", ")}`);
-  }
-
-  if (config.briefing.endTime && !config.briefing.startTime) {
-    throw new Error("BRIEFING_END_TIME requires BRIEFING_START_TIME.");
-  }
-
-  const topicsWithoutFramework = config.briefing.topics.filter((topic) => !topic.framework);
-  if (topicsWithoutFramework.length > 0) {
-    throw new Error(
-      `Every briefing topic needs a standing framework before the briefing runs: ${topicsWithoutFramework
-        .map((topic) => topic.id)
-        .join(", ")}`,
-    );
-  }
-
-  const topicsWithoutWizard = config.briefing.topics.filter((topic) => !topic.wizard);
-  if (topicsWithoutWizard.length > 0) {
-    throw new Error(
-      `Every briefing topic needs user-answered wizard questions before the briefing runs: ${topicsWithoutWizard
-        .map((topic) => topic.id)
-        .join(", ")}`,
-    );
-  }
-
-  const topicsWithUnsupportedCadence = config.briefing.topics.filter(
-    (topic) => topic.cadence && !SUPPORTED_CADENCES.has(topic.cadence),
-  );
-  if (topicsWithUnsupportedCadence.length > 0) {
-    throw new Error(
-      `Unsupported topic cadence: ${topicsWithUnsupportedCadence
-        .map((topic) => `${topic.id}=${topic.cadence}`)
-        .join(", ")}`,
-    );
-  }
-
-  const topicsWithUnsupportedBroadQueryCadence = config.briefing.topics.filter(
-    (topic) => topic.broadQueryCadence && !SUPPORTED_CADENCES.has(topic.broadQueryCadence),
-  );
-  if (topicsWithUnsupportedBroadQueryCadence.length > 0) {
-    throw new Error(
-      `Unsupported broad query cadence: ${topicsWithUnsupportedBroadQueryCadence
-        .map((topic) => `${topic.id}=${topic.broadQueryCadence}`)
-        .join(", ")}`,
-    );
-  }
-
-  const topicIds = new Set(config.briefing.topics.map((topic) => topic.id));
-  const unknownSharedTopicIds = config.briefing.sharedRoutes.flatMap((route) =>
-    route.topicIds.filter((topicId) => !topicIds.has(topicId)),
-  );
-  if (unknownSharedTopicIds.length > 0) {
-    throw new Error(`Unknown shared briefing topic values: ${[...new Set(unknownSharedTopicIds)].join(", ")}`);
+function validateStringArray(errors, value, path) {
+  if (value === undefined) return;
+  if (!Array.isArray(value) || value.some((item) => !nonEmptyString(item))) {
+    errors.push(`${path} must be an array of non-empty strings.`);
   }
 }
 
+function validateIntegerField(errors, value, path, { min = 0 } = {}) {
+  if (value === undefined) return;
+  if (!Number.isSafeInteger(value) || value < min) errors.push(`${path} must be an integer of at least ${min}.`);
+}
+
+function validateBooleanField(errors, value, path) {
+  if (value !== undefined && typeof value !== "boolean") errors.push(`${path} must be a boolean.`);
+}
+
+function validateTopic(errors, topic, index) {
+  const path = `topics[${index}]`;
+  if (!topic || typeof topic !== "object" || Array.isArray(topic)) {
+    errors.push(`${path} must be an object.`);
+    return;
+  }
+
+  for (const field of ["id", "title", "framework", "wizard"]) {
+    if (!nonEmptyString(topic[field])) errors.push(`${path}.${field} must be a non-empty string.`);
+  }
+  if (topic.kind !== "x-search") errors.push(`${path}.kind must be "x-search".`);
+  if (topic.cadence && !SUPPORTED_CADENCES.has(topic.cadence)) errors.push(`${path}.cadence is unsupported: ${topic.cadence}.`);
+  if (topic.broadQueryCadence && !SUPPORTED_CADENCES.has(topic.broadQueryCadence)) {
+    errors.push(`${path}.broadQueryCadence is unsupported: ${topic.broadQueryCadence}.`);
+  }
+  if (!nonEmptyString(topic.query) && !nonEmptyString(topic.trustedQuery) && !topic.marketData && !topic.news && !topic.sportsData) {
+    errors.push(`${path} must configure query or trustedQuery, or a market, news, or sports provider.`);
+  }
+
+  for (const field of ["searchMaxPosts", "maxPages", "lookbackHours", "maxSourcePosts"]) {
+    validateIntegerField(errors, topic[field], `${path}.${field}`, { min: 1 });
+  }
+  validateIntegerField(errors, topic.maxPosts, `${path}.maxPosts`, { min: 0 });
+  for (const field of ["minEngagement", "broadQuerySkipTrustedCount"]) {
+    validateIntegerField(errors, topic[field], `${path}.${field}`, { min: 0 });
+  }
+  for (const field of [
+    "allowReplies",
+    "confidenceTiers",
+    "broadQueryUseSinceId",
+    "citedSourcesOnly",
+    "materialSourcesOnly",
+    "rejectGeneratedUsernames",
+    "rejectTickerLinkDrops",
+    "rejectZeroEngagementLinkDrops",
+  ]) {
+    validateBooleanField(errors, topic[field], `${path}.${field}`);
+  }
+  for (const field of ["trustedAccounts", "cautionAccounts", "excludeAccounts", "excludeTerms", "relevanceTerms"]) {
+    validateStringArray(errors, topic[field], `${path}.${field}`);
+  }
+
+  if (topic.relevanceAllGroups !== undefined) {
+    if (
+      !Array.isArray(topic.relevanceAllGroups) ||
+      topic.relevanceAllGroups.length === 0 ||
+      topic.relevanceAllGroups.some(
+        (group) => !Array.isArray(group) || group.length === 0 || group.some((term) => !nonEmptyString(term)),
+      )
+    ) {
+      errors.push(`${path}.relevanceAllGroups must be a non-empty array of non-empty string arrays.`);
+    }
+  }
+
+  for (const [field, requiredField] of [["marketData", "symbol"], ["news", "query"]]) {
+    const value = topic[field];
+    if (value !== undefined && (!value || typeof value !== "object" || Array.isArray(value) || !nonEmptyString(value[requiredField]))) {
+      errors.push(`${path}.${field}.${requiredField} must be a non-empty string.`);
+    }
+  }
+  if (topic.news && typeof topic.news === "object") {
+    validateIntegerField(errors, topic.news.maxItems, `${path}.news.maxItems`, { min: 1 });
+    validateStringArray(errors, topic.news.cautionPublishers, `${path}.news.cautionPublishers`);
+    if (topic.news.when !== undefined && !nonEmptyString(topic.news.when)) errors.push(`${path}.news.when must be a non-empty string.`);
+  }
+  if (topic.sportsData !== undefined) {
+    const sports = topic.sportsData;
+    if (!sports || typeof sports !== "object" || Array.isArray(sports) || sports.league !== "mlb") {
+      errors.push(`${path}.sportsData must configure the mlb league.`);
+    } else {
+      if (!Number.isSafeInteger(sports.teamId) || sports.teamId < 1) errors.push(`${path}.sportsData.teamId must be a positive integer.`);
+      for (const field of ["divisionId", "maxRecentResults", "maxNextGames"]) {
+        validateIntegerField(errors, sports[field], `${path}.sportsData.${field}`, { min: 1 });
+      }
+      for (const field of ["lookbackDays", "lookaheadDays"]) {
+        validateIntegerField(errors, sports[field], `${path}.sportsData.${field}`, { min: 0 });
+      }
+    }
+  }
+
+}
+
+function timezoneIsValid(timezone) {
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: timezone }).format();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function dateOnlyIsValid(value) {
+  const match = value?.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return false;
+  const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
+  return date.toISOString().slice(0, 10) === value;
+}
+
+export function validateConfig(config) {
+  const errors = [];
+  if (!config || typeof config !== "object") throw new Error("Configuration validation failed:\n- config must be an object.");
+
+  if (!nonEmptyString(config.x?.bearerToken)) errors.push("X_BEARER_TOKEN is required.");
+  if (!nonEmptyString(config.email?.host)) errors.push("SMTP_HOST is required.");
+  if (!nonEmptyString(config.email?.from)) errors.push("EMAIL_FROM is required.");
+  if (!nonEmptyString(config.email?.to)) errors.push("EMAIL_TO is required.");
+  if (!Number.isSafeInteger(config.email?.port) || config.email.port < 1 || config.email.port > 65535) {
+    errors.push("SMTP_PORT must be an integer from 1 through 65535.");
+  }
+  if (typeof config.email?.secure !== "boolean") errors.push("SMTP_SECURE must be a boolean.");
+
+  const briefing = config.briefing || {};
+  for (const [name, value] of [
+    ["BRIEFING_GENERATED_AT", briefing.generatedAt],
+    ["BRIEFING_START_TIME", briefing.startTime],
+    ["BRIEFING_END_TIME", briefing.endTime],
+  ]) {
+    if (!isValidDateTime(value)) errors.push(`${name} must be a valid date/time.`);
+  }
+  if (briefing.endTime && !briefing.startTime) errors.push("BRIEFING_END_TIME requires BRIEFING_START_TIME.");
+  if (
+    isValidDateTime(briefing.startTime) &&
+    isValidDateTime(briefing.endTime) &&
+    briefing.startTime &&
+    briefing.endTime &&
+    new Date(briefing.startTime) >= new Date(briefing.endTime)
+  ) {
+    errors.push("BRIEFING_START_TIME must be earlier than BRIEFING_END_TIME.");
+  }
+  if (!nonEmptyString(briefing.timezone) || !timezoneIsValid(briefing.timezone)) {
+    errors.push(`BRIEFING_TIMEZONE is invalid: ${briefing.timezone || "missing"}.`);
+  }
+  validateIntegerField(errors, briefing.lookbackHours, "BRIEFING_LOOKBACK_HOURS", { min: 1 });
+  validateIntegerField(errors, briefing.maxPosts, "BRIEFING_MAX_POSTS", { min: 1 });
+  validateIntegerField(errors, briefing.schedulerPatReminderDays, "SCHEDULER_PAT_REMINDER_DAYS", { min: 0 });
+  for (const field of ["disableSinceId", "runAllTopics", "saveState"]) {
+    validateBooleanField(errors, briefing[field], `briefing.${field}`);
+  }
+
+  if (briefing.schedulerPatExpiresOn && !dateOnlyIsValid(briefing.schedulerPatExpiresOn)) {
+    errors.push("SCHEDULER_PAT_EXPIRES_ON must be a real calendar date in YYYY-MM-DD format.");
+  }
+  for (const field of ["stateFile", "runHistoryFile"]) {
+    if (!nonEmptyString(briefing[field])) errors.push(`briefing.${field} must be a non-empty path.`);
+  }
+  if (!Array.isArray(briefing.topics) || briefing.topics.length === 0) {
+    errors.push("briefing.topics must be a non-empty array.");
+  } else {
+    briefing.topics.forEach((topic, index) => validateTopic(errors, topic, index));
+    const ids = briefing.topics.map((topic) => topicKey(topic?.id)).filter(Boolean);
+    const duplicateIds = [...new Set(ids.filter((id, index) => ids.indexOf(id) !== index))];
+    if (duplicateIds.length > 0) errors.push(`Topic IDs must be unique: ${duplicateIds.join(", ")}.`);
+  }
+
+  const topicIds = new Set((Array.isArray(briefing.topics) ? briefing.topics : []).map((topic) => topic?.id));
+  if (!Array.isArray(briefing.sharedRoutes)) {
+    errors.push("briefing.sharedRoutes must be an array.");
+  } else {
+    briefing.sharedRoutes.forEach((route, index) => {
+      if (!nonEmptyString(route?.to)) errors.push(`briefing.sharedRoutes[${index}].to must be non-empty.`);
+      if (!Array.isArray(route?.topicIds) || route.topicIds.length === 0) {
+        errors.push(`briefing.sharedRoutes[${index}].topicIds must be a non-empty array.`);
+      } else {
+        const unknown = route.topicIds.filter((topicId) => !topicIds.has(topicId));
+        if (unknown.length > 0) errors.push(`Unknown shared briefing topic values: ${unknown.join(", ")}.`);
+      }
+    });
+  }
+
+  for (const [field, value] of Object.entries(briefing.costs || {})) {
+    if (value !== undefined && (!Number.isFinite(value) || value < 0)) errors.push(`briefing.costs.${field} must be non-negative.`);
+  }
+
+  if (errors.length > 0) throw new Error(`Configuration validation failed:\n- ${errors.join("\n- ")}`);
+}

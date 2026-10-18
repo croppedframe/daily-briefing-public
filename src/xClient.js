@@ -1,3 +1,4 @@
+import { fetchProvider } from "./providerFetch.js";
 const X_API_BASE = "https://api.x.com/2";
 
 export class XCreditsDepletedError extends Error {
@@ -119,7 +120,8 @@ async function fetchRecentXPostsOnce({
 
   let response;
   try {
-    response = await fetch(`${X_API_BASE}/tweets/search/recent?${params}`, {
+    response = await fetchProvider(`${X_API_BASE}/tweets/search/recent?${params}`, {
+      provider: "X", retries: 0, throwOnHttpError: false,
       headers: {
         Authorization: `Bearer ${bearerToken}`,
       },

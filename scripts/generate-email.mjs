@@ -2,6 +2,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 
 import { loadConfig } from "../src/config.js";
+import { OpenAiCreditsDepletedError } from "../src/openaiClient.js";
 import { fetchMarketContext } from "../src/marketData.js";
 import { fetchNewsContext } from "../src/newsContext.js";
 import { selectSignalPosts, sourcePostsForSection } from "../src/postFilter.js";
@@ -142,7 +143,10 @@ async function collectSection({ config, topic, generatedAt, openAiUsageCalls }) 
   const rawPosts = await collectXPosts({ config, topic, health, collectionWarnings });
   const posts = selectSignalPosts(topic, rawPosts);
   const marketContext = await fetchMarketContext(topic.marketData);
-  const newsContext = await fetchNewsContext(topic.news);
+  const newsContext = await fetchNewsContext(topic.news, {
+    startTime: config.briefing.startTime,
+    endTime: config.briefing.endTime || generatedAt.toISOString(),
+  });
   const sportsContext = await fetchSportsContext(topic.sportsData, {
     generatedAt,
     timezone: config.briefing.timezone,
@@ -201,6 +205,7 @@ try {
     usageSink: (usage) => openAiUsageCalls.push(usage),
   });
 } catch (error) {
+  if (error instanceof OpenAiCreditsDepletedError) throw error;
   console.warn(`Subject generation failed; using fallback subject: ${error.message}`);
 }
 

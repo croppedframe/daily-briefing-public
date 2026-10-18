@@ -80,6 +80,8 @@ Fill in `.env` using the environment variable reference below. For local preview
 | `X_BEARER_TOKEN` | For X topics | none | X API bearer token for recent-search collection. |
 | `OPENAI_API_KEY` | No | none | Enables generated summaries and subject lines. |
 | `OPENAI_MODEL` | No | `gpt-5.4-mini` | OpenAI model used for generation. |
+| `OPENAI_REQUEST_TIMEOUT_MS` | No | `60000` | OpenAI request deadline; accepted range is 1,000–120,000 ms. |
+| `BRIEFING_NETWORK_TIMEOUT_MS` | No | `15000` | Other provider request deadline; accepted range is 1,000–120,000 ms. |
 | `SMTP_HOST` | For sending | none | SMTP server hostname. |
 | `SMTP_PORT` | For sending | `587` | SMTP server port. |
 | `SMTP_SECURE` | No | `false` | Use TLS from connection start. |
@@ -311,6 +313,14 @@ This keeps first runs and manual recovery runs bounded while letting weekday-onl
 
 ## Backfill Runs
 
+Validate an exact window without sending email:
+
+```sh
+npm run briefing:backfill -- --start 2026-06-19T21:05:00Z --end 2026-06-21T09:05:00Z --all-topics
+```
+
+Add `--execute` to send it. State saving defaults to off; add `--save-state` only when the backfill should advance saved cursors. Run `npm run briefing:backfill -- --help` for all options. Provider retention limits still apply, and current market/sports data is not a historical snapshot.
+
 For a one-off continuity email after missed runs, use exact UTC timestamps:
 
 ```sh
@@ -386,6 +396,17 @@ Use the full path to your `npm` binary from `which npm`.
 
 The workflow has an optional `persist_state` input. When enabled, it commits `data/briefing-state.json` and `data/run-history.jsonl` back to the repository so GitHub-hosted runs remember seen posts and dashboard history. Leave it off for a simpler setup.
 
+Persistence merges seen IDs, cursors, and run-history records against the latest remote branch. If another run pushes first, it fetches and merges again, for up to three attempts. It does not replace remote state with the local run's copy.
+
+## Reliability and Source Handling
+
+- `npm run validate` checks configuration without provider requests or email delivery. It reports invalid booleans, numbers, dates, timezones, duplicate topic IDs, topic sources, and shared-recipient references. Existing news-only topics and MLB examples remain supported.
+- Provider reads use bounded timeouts and retries. OpenAI requests use a separate timeout and retry only empty HTTP 404 responses, up to two times; ordinary failed generation requests are not automatically resubmitted. Exhausted OpenAI or X credits pause the briefing and trigger an email notification with the relevant billing action.
+- News articles are filtered to the run's publication window. Google News redirects are resolved to direct article URLs where possible; unresolved items are omitted. This resolution is best effort and depends on Google's response format.
+- Summaries remove links that were not supplied by the sources. A material response without a valid inline citation gets one repair attempt, then a withheld-summary notice. This checks link provenance, not whether every claim is supported. Structured MLB data includes source URLs for sports summaries.
+- Quiet sections use a short response only when the whole topic has no material update or useful watch item. Mixed material summaries keep their detail. Price and sports tables remain visible.
+- Shared recipients receive subjects generated from their selected sections. Identical topic selections reuse the same subject request; failures fall back to local subject rendering.
+
 ## Email Delivery Notes
 
 If you send the briefing to Gmail or Google Workspace, consider creating a filter for the briefing sender:
@@ -398,8 +419,10 @@ For best results, send from a dedicated sender or alias.
 
 ## Development
 
-Run syntax checks:
+Run syntax checks and offline regression tests:
 
 ```sh
 npm run check
 ```
+
+Use `npm test` for tests alone. Pull requests and pushes to `main` run checks, example generation, and preview generation on Node 20 and 22. Tests use mocked providers and a local Git fixture; they do not send email or call live services.

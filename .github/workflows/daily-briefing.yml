@@ -26,6 +26,7 @@ jobs:
       X_BEARER_TOKEN: ${{ secrets.X_BEARER_TOKEN }}
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       OPENAI_MODEL: ${{ secrets.OPENAI_MODEL }}
+      OPENAI_REQUEST_TIMEOUT_MS: "60000"
       SMTP_HOST: ${{ secrets.SMTP_HOST }}
       SMTP_PORT: ${{ secrets.SMTP_PORT }}
       SMTP_SECURE: ${{ secrets.SMTP_SECURE }}
@@ -53,7 +54,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Syntax check
+      - name: Validate source and run tests
         run: npm run check
 
       - name: Send briefing
@@ -61,17 +62,4 @@ jobs:
 
       - name: Persist seen-post state
         if: ${{ inputs.persist_state == 'true' }}
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          cp data/briefing-state.json /tmp/local-briefing-state.json
-          cp data/run-history.jsonl /tmp/local-run-history.jsonl
-          git fetch origin main
-          if git show origin/main:data/briefing-state.json > /tmp/remote-briefing-state.json 2>/dev/null; then
-            node scripts/merge-briefing-state.mjs /tmp/remote-briefing-state.json /tmp/local-briefing-state.json data/briefing-state.json
-          fi
-          cp /tmp/local-run-history.jsonl data/run-history.jsonl
-          git add -f data/briefing-state.json
-          git add -f data/run-history.jsonl
-          git diff --cached --quiet || git commit -m "Update briefing state"
-          git push
+        run: bash scripts/persist-briefing-state.sh
