@@ -15,6 +15,8 @@ function formatChange(value) {
   return `${sign}${value.toFixed(2)}`;
 }
 
+import { fetchProviderJson } from "./providerFetch.js";
+
 function marketTime(timestamp) {
   if (!timestamp) return "n/a";
   return new Date(timestamp * 1000).toISOString();
@@ -69,12 +71,10 @@ export async function fetchMarketContext(marketData) {
     const quoteUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=1d&interval=5m`;
     const dailyUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=5d&interval=1d`;
 
-    const [quoteResponse, dailyResponse] = await Promise.all([fetch(quoteUrl), fetch(dailyUrl)]);
-    if (!quoteResponse.ok) throw new Error(`quote request failed (${quoteResponse.status})`);
-    if (!dailyResponse.ok) throw new Error(`daily request failed (${dailyResponse.status})`);
-
-    const quotePayload = await quoteResponse.json();
-    const dailyPayload = await dailyResponse.json();
+    const [quotePayload, dailyPayload] = await Promise.all([
+      fetchProviderJson(quoteUrl, { provider: "Yahoo quote" }),
+      fetchProviderJson(dailyUrl, { provider: "Yahoo daily chart" }),
+    ]);
     const meta = quotePayload.chart?.result?.[0]?.meta || {};
 
     return quoteSummary(symbol, meta, dailyQuotesFromChart(dailyPayload));

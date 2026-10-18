@@ -1,3 +1,4 @@
+import { fetchProviderJson } from "./providerFetch.js";
 function formatDateOnly(date) {
   return date.toISOString().slice(0, 10);
 }
@@ -129,9 +130,7 @@ function sportsContextText(context) {
 }
 
 async function fetchJson(url) {
-  const response = await fetch(url);
-  if (!response.ok) throw new Error(`request failed (${response.status})`);
-  return response.json();
+  return fetchProviderJson(url, { provider: "MLB" });
 }
 
 export async function fetchSportsContext(sportsData, { generatedAt = new Date(), timezone = "America/New_York" } = {}) {
@@ -155,6 +154,7 @@ export async function fetchSportsContext(sportsData, { generatedAt = new Date(),
 
     const context = {
       type: "mlb",
+      sourceUrls: [scheduleUrl, standingsUrl],
       teamId,
       teamName,
       window: { startDate, endDate },

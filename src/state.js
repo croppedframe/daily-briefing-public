@@ -2,8 +2,10 @@ import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "
 import { createHash } from "node:crypto";
 import { dirname } from "node:path";
 
+export const CURRENT_STATE_VERSION = 2;
+
 const DEFAULT_STATE = {
-  version: 1,
+  version: CURRENT_STATE_VERSION,
   updatedAt: null,
   seenPostIds: [],
   queries: {},
@@ -24,18 +26,38 @@ function maxTweetId(ids) {
   }, undefined);
 }
 
+function normalizeQueryRecord(record) {
+  if (!record || typeof record !== "object" || Array.isArray(record)) return {};
+  const normalized = { ...record };
+  if (record.metadata && typeof record.metadata === "object" && !Array.isArray(record.metadata)) {
+    normalized.metadata = { ...record.metadata };
+  }
+  return normalized;
+}
+
+export function migrateBriefingState(state) {
+  const migrated = {
+    ...DEFAULT_STATE,
+    ...state,
+    version: CURRENT_STATE_VERSION,
+    seenPostIds: Array.isArray(state?.seenPostIds) ? state.seenPostIds : [],
+    queries: {},
+    topics: state?.topics && typeof state.topics === "object" && !Array.isArray(state.topics) ? state.topics : {},
+  };
+
+  const sourceQueries = state?.queries && typeof state.queries === "object" && !Array.isArray(state.queries)
+    ? state.queries
+    : {};
+  for (const [key, record] of Object.entries(sourceQueries)) migrated.queries[key] = normalizeQueryRecord(record);
+  return migrated;
+}
+
 export function loadBriefingState(path) {
-  if (!existsSync(path)) return { ...DEFAULT_STATE };
+  if (!existsSync(path)) return migrateBriefingState({});
 
   try {
     const state = JSON.parse(readFileSync(path, "utf8"));
-    return {
-      ...DEFAULT_STATE,
-      ...state,
-      seenPostIds: Array.isArray(state.seenPostIds) ? state.seenPostIds : [],
-      queries: state.queries && typeof state.queries === "object" ? state.queries : {},
-      topics: state.topics && typeof state.topics === "object" ? state.topics : {},
-    };
+    return migrateBriefingState(state);
   } catch (error) {
     throw new Error(`Unable to read briefing state file "${path}": ${error.message}`);
   }
@@ -43,6 +65,20 @@ export function loadBriefingState(path) {
 
 export function isSeenPost(state, postId) {
   return state.seenPostIds.includes(postId);
+}
+
+export function createSeenPostIndex(state) {
+  const seenPostIds = new Set(state.seenPostIds);
+  return {
+    has(postId) {
+      return seenPostIds.has(postId);
+    },
+    add(posts) {
+      for (const post of posts) {
+        if (post?.id) seenPostIds.add(post.id);
+      }
+    },
+  };
 }
 
 export function sinceIdForQuery(state, query) {
@@ -57,15 +93,18 @@ export function lastRunAtForTopic(state, topicId) {
   return state.topics[topicId]?.lastRunAt;
 }
 
-export function noteFetchedPosts(state, query, posts) {
+export function noteFetchedPosts(state, query, posts, metadata = {}) {
   const key = queryKey(query);
   const ids = posts.map((post) => post.id).filter(Boolean);
-  const sinceId = maxTweetId([state.queries[key]?.sinceId, ...ids]);
+  const existing = state.queries[key] || {};
+  const sinceId = maxTweetId([existing.sinceId, ...ids]);
 
   if (sinceId) {
     state.queries[key] = {
+      ...existing,
       sinceId,
       updatedAt: new Date().toISOString(),
+      ...(Object.keys(metadata).length > 0 ? { metadata: { ...(existing.metadata || {}), ...metadata } } : {}),
     };
   }
 

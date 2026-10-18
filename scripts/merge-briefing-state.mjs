@@ -1,6 +1,7 @@
 import { readFileSync, writeFileSync } from "node:fs";
 
 const MAX_SEEN_POST_IDS = 5000;
+const CURRENT_STATE_VERSION = 2;
 
 function readState(path) {
   return JSON.parse(readFileSync(path, "utf8"));
@@ -40,14 +41,14 @@ function mergeQueries(left = {}, right = {}) {
 function mergeTopics(left = {}, right = {}) {
   const merged = { ...left };
 
-  for (const [key, value] of Object.entries(right)) {
-    const existing = merged[key];
+  for (const [topicId, value] of Object.entries(right)) {
+    const existing = merged[topicId];
     if (!existing) {
-      merged[key] = value;
+      merged[topicId] = value;
       continue;
     }
 
-    merged[key] = {
+    merged[topicId] = {
       ...existing,
       ...value,
       lastRunAt: latestTimestamp(existing.lastRunAt, value.lastRunAt),
@@ -67,7 +68,7 @@ export function mergeBriefingStates(left, right) {
     .slice(0, MAX_SEEN_POST_IDS);
 
   return {
-    version: Math.max(left.version || 1, right.version || 1),
+    version: Math.max(CURRENT_STATE_VERSION, left.version || 1, right.version || 1),
     updatedAt: latestTimestamp(left.updatedAt, right.updatedAt),
     seenPostIds,
     queries: mergeQueries(left.queries, right.queries),
@@ -85,7 +86,7 @@ function main() {
   writeFileSync(outputPath, `${JSON.stringify(merged, null, 2)}\n`);
 
   console.log(
-    `Merged briefing state: ${merged.seenPostIds.length} seen post IDs, ${Object.keys(merged.queries).length} query cursors, ${Object.keys(merged.topics).length} topic cursors.`,
+    `Merged briefing state: ${merged.seenPostIds.length} seen post IDs, ${Object.keys(merged.queries).length} query cursors, ${Object.keys(merged.topics || {}).length} topic cursors.`,
   );
 }
 
